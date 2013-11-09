@@ -850,6 +850,7 @@ public class PhotoModule
                 // Finish capture animation
                 mHandler.removeMessages(CAPTURE_ANIMATION_DONE);
                 ((CameraScreenNail) mActivity.mCameraScreenNail).animateSlide();
+                mUI.enablePreviewThumb(true);
                 mHandler.sendEmptyMessageDelayed(CAPTURE_ANIMATION_DONE,
                         CaptureAnimManager.getAnimationDuration());
             }
@@ -1063,9 +1064,6 @@ public class PhotoModule
                 && mActivity.mShowCameraAppView) {
             // Start capture animation.
             ((CameraScreenNail) mActivity.mCameraScreenNail).animateFlash(mDisplayRotation);
-            mUI.enablePreviewThumb(true);
-            mHandler.sendEmptyMessageDelayed(CAPTURE_ANIMATION_DONE,
-                    CaptureAnimManager.getAnimationDuration());
         }
     }
 
@@ -1663,13 +1661,21 @@ public class PhotoModule
         case KeyEvent.KEYCODE_VOLUME_UP:
             if (mActivity.isInCameraApp() && mFirstTimeInitialized
                 && (mUI.mMenuInitialized)) {
-                mUI.onScaleStepResize(true);
+                if (!ActivityBase.mPowerShutter && !Util.hasCameraKey()) {
+                    onShutterButtonFocus(true);
+                } else {
+                    mUI.onScaleStepResize(true);
+                }
             }
             return true;
         case KeyEvent.KEYCODE_VOLUME_DOWN:
             if (mActivity.isInCameraApp() && mFirstTimeInitialized
                 && (mUI.mMenuInitialized)) {
-                mUI.onScaleStepResize(false);
+                if (!ActivityBase.mPowerShutter && !Util.hasCameraKey()) {
+                    onShutterButtonFocus(true);
+                } else {
+                    mUI.onScaleStepResize(false);
+                }
             }
             return true;
         case KeyEvent.KEYCODE_FOCUS:
@@ -1702,7 +1708,7 @@ public class PhotoModule
             return true;
         case KeyEvent.KEYCODE_POWER:
             if (mFirstTimeInitialized && event.getRepeatCount() == 0
-                    && ActivityBase.mPowerShutter) {
+                    && ActivityBase.mPowerShutter && !Util.hasCameraKey()) {
                 onShutterButtonFocus(true);
             }
             return true;
@@ -1717,7 +1723,14 @@ public class PhotoModule
         }
         switch (keyCode) {
         case KeyEvent.KEYCODE_VOLUME_UP:
+            if (!ActivityBase.mPowerShutter && !Util.hasCameraKey()) {
+                onShutterButtonClick();
+            }
+            return true;
         case KeyEvent.KEYCODE_VOLUME_DOWN:
+            if (!ActivityBase.mPowerShutter && !Util.hasCameraKey()) {
+                onShutterButtonClick();
+            }
             return true;
         case KeyEvent.KEYCODE_FOCUS:
             if (mFirstTimeInitialized) {
@@ -1725,7 +1738,7 @@ public class PhotoModule
             }
             return true;
         case KeyEvent.KEYCODE_POWER:
-            if (ActivityBase.mPowerShutter) {
+            if (ActivityBase.mPowerShutter && !Util.hasCameraKey()) {
                 onShutterButtonClick();
             }
             return true;
@@ -2006,6 +2019,14 @@ public class PhotoModule
         if (Util.isSupported(colorEffect, mParameters.getSupportedColorEffects())) {
             mParameters.setColorEffect(colorEffect);
         }
+
+        // Beauty mode
+        CameraSettings.setBeautyMode(mParameters, mPreferences.getString(CameraSettings.KEY_BEAUTY_MODE,
+                mActivity.getString(R.string.pref_camera_beauty_mode_default)).equals("on"));
+
+        // Slow shutter
+        CameraSettings.setSlowShutter(mParameters, mPreferences.getString(CameraSettings.KEY_SLOW_SHUTTER,
+                mActivity.getString(R.string.pref_camera_slow_shutter_default)));
 
         // Set exposure compensation
         int value = CameraSettings.readExposure(mPreferences);
